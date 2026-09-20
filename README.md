@@ -2,6 +2,16 @@
 
 Turns a messy sales export into a clean, formatted Excel report in seconds.
 
+## Before and after
+
+**Before:** the raw sales export, with mixed date formats, inconsistent region names, prices stored as text, duplicate rows, and blank cells.
+
+![Before: messy raw sales data](images/before.png)
+
+**After:** the finished Excel report, with cleaned data, summary tables, and charts.
+
+![After: the finished Excel report](images/after.png)
+
 ## The problem
 
 Many small businesses rebuild the same sales report by hand every week. The raw exports are messy: dates in different formats, misspelled regions, prices stored as text, duplicate rows, and blank cells. Cleaning that by hand takes hours and is easy to get wrong.
