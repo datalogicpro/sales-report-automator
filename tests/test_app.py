@@ -6,11 +6,16 @@ import pytest
 import streamlit
 from streamlit.testing.v1 import AppTest
 
-from app import UPLOAD_CHOICE, format_table, make_report
+from app import UPLOAD_CHOICE, format_table, make_report, product_chart
 from generate_report import ReportError
 
 APP_FILE = str(Path(__file__).parent.parent / "app.py")
 SAMPLE_FILE = Path(__file__).parent.parent / "sample_csv_data.csv"
+
+COMPLETE_FILE = (
+    b"order_date,region,product,quantity,unit_price,revenue,sales_rep\n"
+    b"2025-01-15,West,Laptop Stand,2,45.00,90.00,Ana Lee\n"
+)
 
 # The first run imports pandas and builds the report, which can take a while
 TIMEOUT = 30
@@ -39,6 +44,7 @@ def test_make_report_on_sample_file() -> None:
 
     assert result.raw_rows == 618
     assert len(result.clean) == 600
+    assert len(result.review) == 5
     # Excel files are zip files, which start with "PK"
     assert result.report.startswith(b"PK")
     assert list(result.summaries.by_month.columns) == [
@@ -65,11 +71,42 @@ def test_format_table() -> None:
     assert "%" not in products
 
 
+def test_product_chart() -> None:
+    result = make_report(SAMPLE_FILE.name, SAMPLE_FILE.read_bytes())
+
+    chart = product_chart(result.summaries.by_product).to_dict()
+
+    product_axis = chart["encoding"]["y"]
+    assert product_axis["field"] == "Product"
+    # Biggest first, with room for each product's full name
+    assert product_axis["sort"] == "-x"
+    assert product_axis["axis"]["labelLimit"] == 400
+    # Every product gets a label and its own row
+    assert product_axis["axis"]["labelOverlap"] is False
+    assert chart["height"] == {"step": 40}
+
+
 def test_page_shows_sample_report() -> None:
     app = AppTest.from_file(APP_FILE, default_timeout=TIMEOUT).run()
 
     assert not app.exception
-    assert [metric.value for metric in app.metric] == ["618", "600", "18"]
+    assert [metric.value for metric in app.metric] == ["618", "600", "18", "5"]
+
+
+def test_page_lists_rows_needing_review() -> None:
+    app = AppTest.from_file(APP_FILE, default_timeout=TIMEOUT).run()
+
+    assert not app.exception
+    review = app.dataframe[-1].value
+    assert len(review) == 5
+    assert review["order_id"].tolist()[0] == "ORD-1469"
+
+
+def test_page_says_when_nothing_needs_review() -> None:
+    app = run_with_upload(FakeUpload("sales.csv", COMPLETE_FILE))
+
+    assert not app.exception
+    assert app.success[0].value.startswith("Every row is complete")
 
 
 def test_page_waits_for_upload() -> None:
@@ -84,7 +121,7 @@ def test_page_builds_uploaded_file() -> None:
     app = run_with_upload(FakeUpload("sales.csv", SAMPLE_FILE.read_bytes()))
 
     assert not app.exception
-    assert [metric.value for metric in app.metric] == ["618", "600", "18"]
+    assert [metric.value for metric in app.metric] == ["618", "600", "18", "5"]
 
 
 def test_page_shows_file_errors() -> None:

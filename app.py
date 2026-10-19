@@ -6,8 +6,9 @@ Run it with:  uv run streamlit run app.py
 import tempfile
 from io import BytesIO
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 from pandas.io.formats.style import Styler
@@ -18,6 +19,7 @@ from generate_report import (
     Summaries,
     build_summaries,
     clean_data,
+    find_missing,
     format_summaries,
     load_data,
     write_report,
@@ -30,6 +32,22 @@ UPLOAD_TYPES = ["csv", "tsv", "txt", "xlsx"]
 REPORT_NAME = "sales_report.xlsx"
 EXCEL_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 CHANGE_COLUMN = "Change vs Prior Month (%)"
+# The dark blue used in the Excel report and the page theme
+REPORT_COLOR = "#1F4E78"
+
+# How rows of data look on the page: readable names, dates without a time,
+# and money as dollars
+DATA_COLUMNS = {
+    "order_id": st.column_config.TextColumn("Order ID"),
+    "order_date": st.column_config.DatetimeColumn("Order Date", format="YYYY-MM-DD"),
+    "region": st.column_config.TextColumn("Region"),
+    "product": st.column_config.TextColumn("Product"),
+    "quantity": st.column_config.NumberColumn("Quantity"),
+    "unit_price": st.column_config.NumberColumn("Unit Price", format="dollar"),
+    "revenue": st.column_config.NumberColumn("Revenue", format="dollar"),
+    "sales_rep": st.column_config.TextColumn("Sales Rep"),
+    "missing": st.column_config.TextColumn("Missing"),
+}
 
 
 class Result(NamedTuple):
@@ -37,6 +55,7 @@ class Result(NamedTuple):
     raw_rows: int
     clean: pd.DataFrame
     summaries: Summaries
+    review: pd.DataFrame
 
 
 def make_report(file_name: str, data: bytes) -> Result:
@@ -53,7 +72,13 @@ def make_report(file_name: str, data: bytes) -> Result:
 
     output = BytesIO()
     write_report(clean, summaries, output)
-    return Result(output.getvalue(), raw_rows, clean, format_summaries(summaries))
+    return Result(
+        output.getvalue(),
+        raw_rows,
+        clean,
+        format_summaries(summaries),
+        find_missing(clean),
+    )
 
 
 def format_table(table: pd.DataFrame) -> Styler:
@@ -64,11 +89,34 @@ def format_table(table: pd.DataFrame) -> Styler:
     return table.style.format(formats, na_rep="—")
 
 
+def product_chart(by_product: pd.DataFrame) -> alt.Chart:
+    """Sideways bars, biggest first, with every product's full name."""
+    # Each bar gets its own 40-pixel row, and no label is shortened or skipped
+    product_axis = alt.Axis(labelLimit=400, labelOverlap=False)
+    # Altair's type hints don't say what .properties() returns, so name it here
+    chart: alt.Chart = (
+        alt.Chart(by_product.reset_index())
+        .mark_bar(color=REPORT_COLOR)
+        .encode(
+            x=alt.X("Revenue:Q", title="Revenue"),
+            y=alt.Y("Product:N", sort="-x", title=None, axis=product_axis),
+        )
+        .properties(height=alt.Step(40))
+    )
+    return chart
+
+
+def column_settings(table: pd.DataFrame) -> dict[str, Any]:
+    """The column settings for the columns this table has."""
+    return {name: setting for name, setting in DATA_COLUMNS.items() if name in table}
+
+
 def show_result(result: Result) -> None:
-    rows, clean_rows, duplicates = st.columns(3)
+    rows, clean_rows, duplicates, review = st.columns(4)
     rows.metric("Rows in the file", result.raw_rows)
     clean_rows.metric("Clean rows", len(result.clean))
     duplicates.metric("Duplicates removed", result.raw_rows - len(result.clean))
+    review.metric("Rows needing review", len(result.review))
 
     st.download_button(
         "Download the Excel report",
@@ -78,19 +126,42 @@ def show_result(result: Result) -> None:
         type="primary",
     )
 
-    monthly, products, regions, clean = st.tabs(
-        ["Monthly", "Products", "Regions", "Clean Data"]
+    monthly, products, regions, clean, needs_review = st.tabs(
+        ["Monthly", "Products", "Regions", "Clean Data", "Needs Review"]
     )
-    for tab, table in [
-        (monthly, result.summaries.by_month),
-        (products, result.summaries.by_product),
-        (regions, result.summaries.by_region),
-    ]:
-        with tab:
-            st.bar_chart(table["Revenue"])
-            st.dataframe(format_table(table), placeholder="—")
+    summaries = result.summaries
+    with monthly:
+        # Bars in table order, so months stay in date order
+        st.bar_chart(summaries.by_month["Revenue"], color="primary", sort=False)
+        st.dataframe(format_table(summaries.by_month), placeholder="—")
+    with products:
+        st.altair_chart(product_chart(summaries.by_product))
+        st.dataframe(format_table(summaries.by_product), placeholder="—")
+    with regions:
+        # Bars in table order, biggest first
+        st.bar_chart(summaries.by_region["Revenue"], color="primary", sort=False)
+        st.dataframe(format_table(summaries.by_region), placeholder="—")
     with clean:
-        st.dataframe(result.clean, hide_index=True)
+        st.dataframe(
+            result.clean,
+            hide_index=True,
+            placeholder="—",
+            column_config=column_settings(result.clean),
+        )
+    with needs_review:
+        if result.review.empty:
+            st.success("Every row is complete. Nothing needs review.")
+        else:
+            st.caption(
+                "These rows are missing values that can't be worked out from the "
+                "other columns. Look them up in the original records."
+            )
+            st.dataframe(
+                result.review,
+                hide_index=True,
+                placeholder="—",
+                column_config=column_settings(result.review),
+            )
 
 
 def main() -> None:
