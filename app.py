@@ -10,6 +10,7 @@ from typing import NamedTuple
 
 import pandas as pd
 import streamlit as st
+from pandas.io.formats.style import Styler
 
 from generate_report import (
     REQUIRED_COLUMNS,
@@ -28,6 +29,7 @@ UPLOAD_CHOICE = "Upload my own file"
 UPLOAD_TYPES = ["csv", "tsv", "txt", "xlsx"]
 REPORT_NAME = "sales_report.xlsx"
 EXCEL_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+CHANGE_COLUMN = "Change vs Prior Month (%)"
 
 
 class Result(NamedTuple):
@@ -54,6 +56,14 @@ def make_report(file_name: str, data: bytes) -> Result:
     return Result(output.getvalue(), raw_rows, clean, format_summaries(summaries))
 
 
+def format_table(table: pd.DataFrame) -> Styler:
+    """Show money as dollars, change as a percent, and a dash for no value."""
+    formats = {"Revenue": "${:,.2f}"}
+    if CHANGE_COLUMN in table.columns:
+        formats[CHANGE_COLUMN] = "{:+.1f}%"
+    return table.style.format(formats, na_rep="—")
+
+
 def show_result(result: Result) -> None:
     rows, clean_rows, duplicates = st.columns(3)
     rows.metric("Rows in the file", result.raw_rows)
@@ -78,7 +88,7 @@ def show_result(result: Result) -> None:
     ]:
         with tab:
             st.bar_chart(table["Revenue"])
-            st.dataframe(table)
+            st.dataframe(format_table(table), placeholder="—")
     with clean:
         st.dataframe(result.clean, hide_index=True)
 
