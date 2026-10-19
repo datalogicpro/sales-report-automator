@@ -264,7 +264,13 @@ def test_build_report_writes_file(tmp_path: Path) -> None:
 
     assert len(df) == 3
     workbook = load_workbook(output)
-    assert workbook.sheetnames == ["Monthly", "Products", "Regions", "Clean Data"]
+    assert workbook.sheetnames == [
+        "Monthly",
+        "Products",
+        "Regions",
+        "Clean Data",
+        "Needs Review",
+    ]
     assert workbook["Monthly"]["B1"].value == "Revenue"
     assert workbook["Products"]["A2"].value == "Laptop Stand"
 
@@ -290,6 +296,36 @@ def test_build_report_on_sample_file(tmp_path: Path) -> None:
     assert df["revenue"].isna().sum() == 5
     assert df["sales_rep"].isna().sum() == 0
     assert len(find_missing(df)) == 5
+
+
+def test_report_lists_rows_needing_review(tmp_path: Path) -> None:
+    output = tmp_path / "sales_report.xlsx"
+
+    build_report(SAMPLE_FILE, output)
+
+    rows = list(load_workbook(output)["Needs Review"].values)
+    assert rows[0][-1] == "missing"
+    assert len(rows) == 6
+    assert rows[1][0] == "ORD-1469"
+    assert rows[1][-1] == "unit_price, revenue"
+
+
+def test_data_sheets_show_dollars_and_fit_long_names(tmp_path: Path) -> None:
+    output = tmp_path / "sales_report.xlsx"
+
+    build_report(SAMPLE_FILE, output)
+
+    workbook = load_workbook(output)
+    clean = workbook["Clean Data"]
+    review = workbook["Needs Review"]
+    # Unit price and revenue are columns F and G
+    assert clean["F2"].number_format == "$#,##0.00"
+    assert clean["G2"].number_format == "$#,##0.00"
+    assert review["F6"].value == 32.75
+    assert review["F6"].number_format == "$#,##0.00"
+    # Product is column D, wide enough for "Noise-Canceling Headphones"
+    assert clean.column_dimensions["D"].width >= 28
+    assert review.column_dimensions["D"].width >= 28
 
 
 def test_main_saves_report(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:

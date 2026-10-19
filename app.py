@@ -46,6 +46,7 @@ DATA_COLUMNS = {
     "unit_price": st.column_config.NumberColumn("Unit Price", format="dollar"),
     "revenue": st.column_config.NumberColumn("Revenue", format="dollar"),
     "sales_rep": st.column_config.TextColumn("Sales Rep"),
+    "missing": st.column_config.TextColumn("Missing"),
 }
 
 
@@ -125,8 +126,8 @@ def show_result(result: Result) -> None:
         type="primary",
     )
 
-    monthly, products, regions, clean = st.tabs(
-        ["Monthly", "Products", "Regions", "Clean Data"]
+    monthly, products, regions, clean, needs_review = st.tabs(
+        ["Monthly", "Products", "Regions", "Clean Data", "Needs Review"]
     )
     summaries = result.summaries
     with monthly:
@@ -147,6 +148,20 @@ def show_result(result: Result) -> None:
             placeholder="—",
             column_config=column_settings(result.clean),
         )
+    with needs_review:
+        if result.review.empty:
+            st.success("Every row is complete. Nothing needs review.")
+        else:
+            st.caption(
+                "These rows are missing values that can't be worked out from the "
+                "other columns. Look them up in the original records."
+            )
+            st.dataframe(
+                result.review,
+                hide_index=True,
+                placeholder="—",
+                column_config=column_settings(result.review),
+            )
 
 
 def main() -> None:

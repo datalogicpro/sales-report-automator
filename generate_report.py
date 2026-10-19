@@ -17,7 +17,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import IO, NamedTuple
+from typing import IO, Any, NamedTuple
 
 import pandas as pd
 
@@ -239,6 +239,32 @@ def format_summaries(summaries: Summaries) -> Summaries:
 OUTPUT_FILE = Path("output/sales_report.xlsx")
 
 
+# Columns that need more room than the usual 18 characters
+WIDE_COLUMNS = {"product": 28, "missing": 24}
+
+
+def write_data_sheet(
+    writer: pd.ExcelWriter,
+    name: str,
+    table: pd.DataFrame,
+    header: Any,
+    money: Any,
+) -> None:
+    """Save rows of data on their own sheet, with a header row and filters.
+
+    Money columns show as dollars, and long text columns are wider so their
+    values fit.
+    """
+    table.to_excel(writer, sheet_name=name, index=False)
+    sheet = writer.sheets[name]
+    for col, title in enumerate(table.columns):
+        sheet.write(0, col, title, header)
+        cell_format = money if title in MONEY_COLUMNS else None
+        sheet.set_column(col, col, WIDE_COLUMNS.get(title, 18), cell_format)
+    sheet.freeze_panes(1, 0)
+    sheet.autofilter(0, 0, len(table), len(table.columns) - 1)
+
+
 def write_report(
     df: pd.DataFrame, summaries: Summaries, output: Path | IO[bytes]
 ) -> None:
@@ -296,13 +322,8 @@ def write_report(
             chart.set_size({"width": 620, "height": 340})
             sheet.insert_chart("E2", chart)
 
-        df.to_excel(writer, sheet_name="Clean Data", index=False)
-        data_sheet = writer.sheets["Clean Data"]
-        for col, title in enumerate(df.columns):
-            data_sheet.write(0, col, title, header)
-        data_sheet.set_column(0, len(df.columns) - 1, 18)
-        data_sheet.freeze_panes(1, 0)
-        data_sheet.autofilter(0, 0, len(df), len(df.columns) - 1)
+        write_data_sheet(writer, "Clean Data", df, header, money)
+        write_data_sheet(writer, "Needs Review", find_missing(df), header, money)
 
 
 def build_report(input_path: str | Path, output: Path | IO[bytes]) -> pd.DataFrame:
