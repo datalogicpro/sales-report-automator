@@ -1,6 +1,6 @@
 [project]
 name = "sales-report-automator"
-version = "1.0.0"
+version = "1.1.0"
 description = "Turns a messy sales export into a clean, formatted Excel report."
 readme = "README.md"
 requires-python = ">=3.13"
