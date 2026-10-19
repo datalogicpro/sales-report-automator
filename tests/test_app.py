@@ -39,6 +39,7 @@ def test_make_report_on_sample_file() -> None:
 
     assert result.raw_rows == 618
     assert len(result.clean) == 600
+    assert len(result.review) == 5
     # Excel files are zip files, which start with "PK"
     assert result.report.startswith(b"PK")
     assert list(result.summaries.by_month.columns) == [
@@ -84,7 +85,7 @@ def test_page_shows_sample_report() -> None:
     app = AppTest.from_file(APP_FILE, default_timeout=TIMEOUT).run()
 
     assert not app.exception
-    assert [metric.value for metric in app.metric] == ["618", "600", "18"]
+    assert [metric.value for metric in app.metric] == ["618", "600", "18", "5"]
 
 
 def test_page_waits_for_upload() -> None:
@@ -99,7 +100,7 @@ def test_page_builds_uploaded_file() -> None:
     app = run_with_upload(FakeUpload("sales.csv", SAMPLE_FILE.read_bytes()))
 
     assert not app.exception
-    assert [metric.value for metric in app.metric] == ["618", "600", "18"]
+    assert [metric.value for metric in app.metric] == ["618", "600", "18", "5"]
 
 
 def test_page_shows_file_errors() -> None:

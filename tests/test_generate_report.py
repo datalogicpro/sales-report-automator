@@ -19,6 +19,7 @@ from generate_report import (
     clean_regions,
     detect_separator,
     fill_blanks,
+    find_missing,
     load_data,
     main,
     remove_duplicates,
@@ -209,6 +210,35 @@ def test_fill_blanks() -> None:
     assert result["sales_rep"].tolist() == ["Ana Lee", *["Unassigned"] * 3]
 
 
+def test_find_missing() -> None:
+    df = pd.DataFrame(
+        {
+            "order_id": ["1", "2", "3"],
+            "order_date": pd.to_datetime(["2025-01-15", "2025-01-16", None]),
+            "region": ["West", "East", "West"],
+            "product": ["Desk Lamp", "Desk Lamp", "USB-C Hub"],
+            "quantity": [2.0, None, 1.0],
+            "unit_price": [10.0, None, 5.0],
+            "revenue": [20.0, 30.0, 5.0],
+            "sales_rep": ["Ana Lee", "Ben Cho", "Ana Lee"],
+        }
+    )
+
+    result = find_missing(df)
+
+    assert result["order_id"].tolist() == ["2", "3"]
+    assert result["missing"].tolist() == ["quantity, unit_price", "order_date"]
+
+
+def test_find_missing_when_every_row_is_complete(tmp_path: Path) -> None:
+    df = clean_data(load_data(write_csv(tmp_path)))
+
+    result = find_missing(df)
+
+    assert result.empty
+    assert "missing" in result.columns
+
+
 def test_build_summaries(tmp_path: Path) -> None:
     df = clean_data(load_data(write_csv(tmp_path)))
 
@@ -259,6 +289,7 @@ def test_build_report_on_sample_file(tmp_path: Path) -> None:
     assert df["unit_price"].isna().sum() == 4
     assert df["revenue"].isna().sum() == 5
     assert df["sales_rep"].isna().sum() == 0
+    assert len(find_missing(df)) == 5
 
 
 def test_main_saves_report(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:

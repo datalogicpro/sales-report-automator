@@ -19,6 +19,7 @@ from generate_report import (
     Summaries,
     build_summaries,
     clean_data,
+    find_missing,
     format_summaries,
     load_data,
     write_report,
@@ -53,6 +54,7 @@ class Result(NamedTuple):
     raw_rows: int
     clean: pd.DataFrame
     summaries: Summaries
+    review: pd.DataFrame
 
 
 def make_report(file_name: str, data: bytes) -> Result:
@@ -69,7 +71,13 @@ def make_report(file_name: str, data: bytes) -> Result:
 
     output = BytesIO()
     write_report(clean, summaries, output)
-    return Result(output.getvalue(), raw_rows, clean, format_summaries(summaries))
+    return Result(
+        output.getvalue(),
+        raw_rows,
+        clean,
+        format_summaries(summaries),
+        find_missing(clean),
+    )
 
 
 def format_table(table: pd.DataFrame) -> Styler:
@@ -103,10 +111,11 @@ def column_settings(table: pd.DataFrame) -> dict[str, Any]:
 
 
 def show_result(result: Result) -> None:
-    rows, clean_rows, duplicates = st.columns(3)
+    rows, clean_rows, duplicates, review = st.columns(4)
     rows.metric("Rows in the file", result.raw_rows)
     clean_rows.metric("Clean rows", len(result.clean))
     duplicates.metric("Duplicates removed", result.raw_rows - len(result.clean))
+    review.metric("Rows needing review", len(result.review))
 
     st.download_button(
         "Download the Excel report",
