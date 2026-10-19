@@ -6,7 +6,7 @@ import pytest
 import streamlit
 from streamlit.testing.v1 import AppTest
 
-from app import UPLOAD_CHOICE, make_report
+from app import UPLOAD_CHOICE, format_table, make_report
 from generate_report import ReportError
 
 APP_FILE = str(Path(__file__).parent.parent / "app.py")
@@ -50,6 +50,19 @@ def test_make_report_on_sample_file() -> None:
 def test_make_report_bad_file() -> None:
     with pytest.raises(ReportError, match="missing these columns"):
         make_report("sales.csv", b"region\nWest\n")
+
+
+def test_format_table() -> None:
+    result = make_report(SAMPLE_FILE.name, SAMPLE_FILE.read_bytes())
+
+    monthly = format_table(result.summaries.by_month).to_string()
+    products = format_table(result.summaries.by_product).to_string()
+
+    # The first month has no earlier month to compare with, so it shows a dash
+    assert "2025-01 $28,285.40 —" in monthly
+    assert "2025-02 $37,294.87 +31.9%" in monthly
+    assert "$" in products
+    assert "%" not in products
 
 
 def test_page_shows_sample_report() -> None:
