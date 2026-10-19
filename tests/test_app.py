@@ -6,7 +6,7 @@ import pytest
 import streamlit
 from streamlit.testing.v1 import AppTest
 
-from app import UPLOAD_CHOICE, format_table, make_report
+from app import UPLOAD_CHOICE, format_table, make_report, product_chart
 from generate_report import ReportError
 
 APP_FILE = str(Path(__file__).parent.parent / "app.py")
@@ -63,6 +63,21 @@ def test_format_table() -> None:
     assert "2025-02 $37,294.87 +31.9%" in monthly
     assert "$" in products
     assert "%" not in products
+
+
+def test_product_chart() -> None:
+    result = make_report(SAMPLE_FILE.name, SAMPLE_FILE.read_bytes())
+
+    chart = product_chart(result.summaries.by_product).to_dict()
+
+    product_axis = chart["encoding"]["y"]
+    assert product_axis["field"] == "Product"
+    # Biggest first, with room for each product's full name
+    assert product_axis["sort"] == "-x"
+    assert product_axis["axis"]["labelLimit"] == 400
+    # Every product gets a label and its own row
+    assert product_axis["axis"]["labelOverlap"] is False
+    assert chart["height"] == {"step": 40}
 
 
 def test_page_shows_sample_report() -> None:

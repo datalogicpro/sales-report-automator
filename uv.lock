@@ -1548,6 +1548,7 @@ name = "sales-report-automator"
 version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "altair" },
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "streamlit" },
@@ -1567,6 +1568,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "altair", specifier = ">=6.3.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=3.0.6" },
     { name = "streamlit", specifier = ">=1.66.0" },
