@@ -4,6 +4,8 @@
 
 Turns a messy sales export into a clean, formatted Excel report in seconds.
 
+**Live demo:** [datalogicpro-sales-report.streamlit.app](https://datalogicpro-sales-report.streamlit.app)
+
 ## Before and after
 
 **Before:** the raw sales export, with mixed date formats, inconsistent region names, prices stored as text, duplicate rows, and blank cells.
