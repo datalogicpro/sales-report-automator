@@ -1,13 +1,46 @@
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  # File checks from the pre-commit-hooks package. They run from the project's
+  # .venv through uv, like Ruff and mypy, so Windows Smart App Control doesn't
+  # block them.
+  - repo: local
     hooks:
       - id: trailing-whitespace
+        name: trim trailing whitespace
+        entry: uv run python -m pre_commit_hooks.trailing_whitespace_fixer
+        language: system
+        types: [text]
+        stages: [pre-commit, pre-push, manual]
+
       - id: end-of-file-fixer
+        name: fix end of files
+        entry: uv run python -m pre_commit_hooks.end_of_file_fixer
+        language: system
+        types: [text]
+        stages: [pre-commit, pre-push, manual]
+
       - id: check-yaml
+        name: check yaml
+        entry: uv run python -m pre_commit_hooks.check_yaml
+        language: system
+        types: [yaml]
+
       - id: check-toml
+        name: check toml
+        entry: uv run python -m pre_commit_hooks.check_toml
+        language: system
+        types: [toml]
+
       - id: check-merge-conflict
+        name: check for merge conflicts
+        entry: uv run python -m pre_commit_hooks.check_merge_conflict
+        language: system
+        types: [text]
+
       - id: check-added-large-files
+        name: check for added large files
+        entry: uv run python -m pre_commit_hooks.check_added_large_files
+        language: system
+        stages: [pre-commit, pre-push, manual]
 
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.13.0
