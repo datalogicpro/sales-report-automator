@@ -1,0 +1,7 @@
+[server]
+# Sales exports are small, so uploads are limited to 5 MB
+maxUploadSize = 5
+
+[theme]
+# Matches the header color in the Excel report
+primaryColor = "#1F4E78"
