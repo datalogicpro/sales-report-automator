@@ -32,6 +32,7 @@ Many small businesses rebuild the same sales report by hand every week. The raw 
   - Fills in blanks that can be calculated (revenue = quantity x price) and labels missing sales reps as "Unassigned"
 - **Builds summaries:** revenue by month (with change from the previous month), by product, and by region.
 - **Saves a formatted Excel report** with a chart on each summary sheet.
+- **Flags rows to review:** rows still missing a value that can't be calculated are listed on their own sheet, with the missing columns named.
 - **Explains problems clearly:** a missing file, an unreadable file, or missing columns each get a plain message instead of a crash.
 
 ## Results on the sample file
@@ -47,15 +48,16 @@ Many small businesses rebuild the same sales report by hand every week. The raw 
 | Blank revenue amounts | 58 | 5 |
 | Blank sales reps | 23 | 0 |
 
-The few blanks left are rows missing two of the three numbers (quantity, price, revenue), so they can't be calculated.
+The few blanks left are rows missing two of the three numbers (quantity, price, revenue), so they can't be calculated. Those 5 rows are listed on the Needs Review sheet.
 
 ## Web page
 
 The web page runs the same cleaning steps in the browser:
 
 - Try the included sample file, or upload your own
-- See the rows before and after, and how many duplicates were removed
+- See the rows before and after, how many duplicates were removed, and how many rows need review
 - Look through the monthly, product, and region summaries with charts
+- See the clean data, and the rows that need review with the values they're missing
 - Download the finished Excel report
 
 ## Input file
@@ -98,12 +100,13 @@ The file needs these columns. Other columns are kept as they are. Column names c
 
 ## The report
 
-The Excel file has four sheets:
+The Excel file has five sheets:
 
 - **Monthly:** revenue by month, percent change from the previous month, and a chart
 - **Products:** revenue by product, biggest first, with a chart
 - **Regions:** revenue by region, with a chart
 - **Clean Data:** all cleaned rows, with filters
+- **Needs Review:** rows still missing a value, with a column naming what's missing
 
 ## Development
 
