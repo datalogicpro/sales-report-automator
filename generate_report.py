@@ -189,6 +189,19 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     return fill_blanks(df)
 
 
+def find_missing(df: pd.DataFrame) -> pd.DataFrame:
+    """Rows still missing a required value after cleaning, and which values.
+
+    These can't be worked out from the other columns, so a person needs to
+    look them up in the original records.
+    """
+    blanks = df[REQUIRED_COLUMNS].isna()
+    needs_review = blanks.any(axis=1)
+    missing = blanks.apply(lambda row: ", ".join(row.index[row]), axis=1)
+    review = df[needs_review].assign(missing=missing[needs_review])
+    return review.reset_index(drop=True)
+
+
 def build_summaries(df: pd.DataFrame) -> Summaries:
     """Make the summary tables that will go into the report."""
     months = df["order_date"].dt.to_period("M")
@@ -298,6 +311,7 @@ def build_report(input_path: str | Path, output: Path | IO[bytes]) -> pd.DataFra
     logger.info("Loaded %d rows and %d columns", len(df), len(df.columns))
 
     df = clean_data(df)
+    logger.info("%d rows need review", len(find_missing(df)))
     write_report(df, build_summaries(df), output)
     return df
 
